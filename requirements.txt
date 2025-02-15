@@ -4,3 +4,4 @@ numpy
 Werkzeug
 gunicorn
 flask_cors
+scikit learn
