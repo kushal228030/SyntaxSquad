@@ -3,9 +3,9 @@ import numpy as np
 import joblib
 
 # Load saved models and encoders
-model = joblib.load("C:\\Users\\User\\Downloads\\nutrition_model.pkl")
-scaler = joblib.load("C:\\Users\\User\\Downloads\\scaler.pkl")
-encoder_dict = joblib.load("C:\\Users\\User\\Downloads\\encoder_dict.pkl")
+model = joblib.load("nutrition_model.pkl")
+scaler = joblib.load("scaler.pkl")
+encoder_dict = joblib.load("encoder_dict.pkl")
 
 df = None  # Load your dataset here if meal recommendations are needed
 
