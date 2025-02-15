@@ -1,0 +1,6 @@
+flask
+joblib
+numpy
+Werkzeug
+gunicorn
+flask_cors
