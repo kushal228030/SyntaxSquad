@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify
 import numpy as np
 import joblib
+import random
 
 # Load saved models and encoders
 model = joblib.load("nutrition_model.pkl")
 scaler = joblib.load("scaler.pkl")
 encoder_dict = joblib.load("encoder_dict.pkl")
-
-df = None  # Load your dataset here if meal recommendations are needed
+meals_data = joblib.load("meals_dataset.pkl")  # Load meal dataset
 
 app = Flask(__name__)
 
@@ -57,6 +57,19 @@ def predict():
         # Decode dietary restriction
         dietary_restriction = encoder_dict["Dietary_Restriction"].inverse_transform([int(round(dietary_restriction_encoded))])[0]
         
+        # Generate a weekly meal plan
+        meals = meals_data[meals_data["Dietary_Restriction"] == dietary_restriction]
+        weekly_meal_plan = []
+        for day in range(7):
+            daily_meal = meals.sample(n=1).iloc[0]
+            weekly_meal_plan.append({
+                "day": f"Day {day + 1}",
+                "breakfast": daily_meal["Breakfast"],
+                "lunch": daily_meal["Lunch"],
+                "dinner": daily_meal["Dinner"],
+                "snacks": daily_meal["Snacks"]
+            })
+        
         # Prepare response
         response = {
             "calories_burned": round(calories_burned, 2),
@@ -65,7 +78,8 @@ def predict():
             "carbs_g": round(carbs, 2),
             "fat_g": round(fat, 2),
             "exercise_time_minutes": exercise_time,
-            "dietary_restriction": dietary_restriction
+            "dietary_restriction": dietary_restriction,
+            "weekly_meal_plan": weekly_meal_plan
         }
         
         return jsonify(response)
