@@ -1,8 +1,7 @@
-from flask_cors import CORSfrom flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,CORS
 import numpy as np
 import joblib
 import random
-from flask_cors import CORS
 # Load saved models and encoders
 model = joblib.load("nutrition_model.pkl")
 scaler = joblib.load("scaler.pkl")
