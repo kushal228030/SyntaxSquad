@@ -18,6 +18,7 @@ def home():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    # Ensure request is JSON
     if request.content_type != "application/json":
         return jsonify({"error": "Content-Type must be application/json"}), 415
 
@@ -32,64 +33,60 @@ def predict():
         activity_level = data["activity_level"]
         health_condition = data["health_condition"]
         goal = data["goal"]
+        dietary_restriction = data.get("dietary_restriction", "General")
 
-        # Encode categorical inputs
+        # Encode categorical values
         gender_encoded = encoder_dict["Gender"].transform([gender])[0]
         activity_level_encoded = encoder_dict["Activity_Level"].transform([activity_level])[0]
         health_condition_encoded = encoder_dict["Health_Condition"].transform([health_condition])[0]
 
-        # Prepare input array (no dietary_restriction as input)
+        # Encode dietary restriction (if exists in encoder)
+        if dietary_restriction in encoder_dict["Dietary_Restriction"].classes_:
+            dietary_restriction_encoded = encoder_dict["Dietary_Restriction"].transform([dietary_restriction])[0]
+        else:
+            dietary_restriction_encoded = 0  # Default if not found
+
+        # Create input array
         user_data = np.array([[age, gender_encoded, weight_kg, height_cm, activity_level_encoded, health_condition_encoded]])
         user_data_scaled = scaler.transform(user_data)
 
-        # Predict all targets including dietary_restriction_encoded
+        # Predict values
         predictions = model.predict(user_data_scaled)[0]
-        calories_burned, target_calories, protein, carbs, fat = predictions
 
+        # Unpack predictions
+        if len(predictions) == 5:
+            calories_burned, target_calories, protein, carbs, fat = predictions
+        else:
+            return jsonify({"error": "Unexpected output size from model"}), 500
 
-        # Round and cast dietary_restriction_encoded to nearest int (since regression output)
-        dietary_restriction_encoded = int(round(dietary_restriction_encoded))
-        # Clamp to valid classes range (optional safety)
-        dietary_restriction_encoded = max(0, min(dietary_restriction_encoded, len(encoder_dict["Dietary_Restriction"].classes_) - 1))
-
-        # Decode dietary restriction string label
-        dietary_restriction = encoder_dict["Dietary_Restriction"].inverse_transform([dietary_restriction_encoded])[0]
-
-        # Adjust target calories by goal
+        # Adjust target calories based on goal
         if goal.lower() == "lose weight":
             target_calories -= 500
         elif goal.lower() == "gain weight":
             target_calories += 500
 
-        # Calculate exercise time
+        # Calculate recommended exercise time
         base_time = {"Sedentary": 30, "Lightly Active": 45, "Moderately Active": 60, "Very Active": 90}
         health_modifier = {"None": 1.0, "Diabetes": 1.2, "Hypertension": 1.1, "Obesity": 1.5}
         activity_time = base_time.get(activity_level, 45)
         modifier = health_modifier.get(health_condition, 1.0)
         exercise_time = int(activity_time * modifier + max(0, (target_calories - calories_burned) // 50))
 
-        # Filter meals by encoded dietary restriction (since meals_data is encoded)
-        dietary_restriction_encoded_for_filter = encoder_dict["Dietary_Restriction"].transform([dietary_restriction])[0]
-        filtered_meals = meals_data[meals_data["Dietary_Restriction"] == dietary_restriction_encoded_for_filter]
+        # Filter meals based on dietary restriction
+        meals = meals_data[meals_data["Dietary_Restriction"] == dietary_restriction]
+        if meals.empty:
+            return jsonify({"error": f"No meal plans found for {dietary_restriction}"}), 404
 
-        # Fallback if no meals found
-        if filtered_meals.empty:
-            # Try 'General' or 0 or whatever default class you have
-            fallback_encoded = 0
-            filtered_meals = meals_data[meals_data["Dietary_Restriction"] == fallback_encoded]
-            if filtered_meals.empty:
-                return jsonify({"error": "No meal plans available for your dietary restriction or fallback."}), 404
-
-        # Sample 7 random meals for a weekly plan
+        # Generate a weekly meal plan
         weekly_meal_plan = []
-        sampled_meals = filtered_meals.sample(n=7, replace=True)
-        for day, meal in enumerate(sampled_meals.itertuples()):
+        for day in range(7):
+            daily_meal = meals.sample(n=1).iloc[0]  # Random meal for each day
             weekly_meal_plan.append({
                 "day": f"Day {day + 1}",
-                "breakfast": meal.Breakfast,
-                "lunch": meal.Lunch,
-                "dinner": meal.Dinner,
-                "snacks": meal.Snacks,
+                "breakfast": daily_meal["Breakfast"],
+                "lunch": daily_meal["Lunch"],
+                "dinner": daily_meal["Dinner"],
+                "snacks": daily_meal["Snacks"]
             })
 
         # Prepare response
