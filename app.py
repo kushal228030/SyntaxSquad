@@ -11,6 +11,7 @@ meals_data = joblib.load("meals_dataset.pkl")  # Fix meals_data path
   # Load meal dataset
 
 app = Flask(__name__)
+CORS(app,  resources={r"/predict": {"origins": "*"}})
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "API is running"})
