@@ -44,7 +44,8 @@ def predict():
 
         # Predict all targets including dietary_restriction_encoded
         predictions = model.predict(user_data_scaled)[0]
-        calories_burned, target_calories, protein, carbs, fat, dietary_restriction_encoded = predictions
+        calories_burned, target_calories, protein, carbs, fat = predictions
+
 
         # Round and cast dietary_restriction_encoded to nearest int (since regression output)
         dietary_restriction_encoded = int(round(dietary_restriction_encoded))
