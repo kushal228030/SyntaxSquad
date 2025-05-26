@@ -44,10 +44,6 @@ def predict():
 
         # Predict all targets including dietary_restriction_encoded
         predictions = model.predict(user_data_scaled)[0]
-
-        if len(predictions) != 6:
-            return jsonify({"error": "Unexpected output size from model"}), 500
-
         calories_burned, target_calories, protein, carbs, fat, dietary_restriction_encoded = predictions
 
         # Round and cast dietary_restriction_encoded to nearest int (since regression output)
